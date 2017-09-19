@@ -27,7 +27,7 @@ class Board extends React.Component {
       );
     } else {
       return (
-        <img alt="" src={require("../../img/beerView.jpg")} className="shadowPicture" id="image" />
+        <img alt="" src={require("../../img/model_ders.jpg")} className="shadowPicture" id="image" />
       );
     }
   }
