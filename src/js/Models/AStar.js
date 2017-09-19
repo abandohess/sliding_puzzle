@@ -15,50 +15,29 @@ class AStar {
    this.visited = new Set();
   }
 
-  solve(stopEarly) {
-    let someIterations = false;
-    if (!stopEarly) {
-      someIterations = true;
-      stopEarly = true;
-    }
-    let iterations = 0;
-    let max = 10;
+  solve() {
     let visited = new Set();
-    if(stopEarly) console.log("INITIAL QUEUE SIZE: " + this.queue.length);
     while (this.queue.length > 0) {
-      if(someIterations && iterations > max) stopEarly = false;
-      if (stopEarly) console.log("entering loop");
-      if (stopEarly && iterations > max) break;
-      iterations ++;
-      // console.log("queue len: " + this.queue.length + ", set size: " + visited.size);
       let current = this.queue.dequeue();
       if (current.strRepresentation == this.goal.strRepresentation) {
-        alert("terminated");
         return current;
       } else {
         visited.add(current.strRepresentation);
-
-        let frontier = this.expand(current, stopEarly);
-        // console.log(frontier);
+        let frontier = this.expand(current);
         for (let i = 0; i < frontier.length; i++) {
           let newState = frontier[i];
-          // console.log(visited);
-          // console.log(frontier);
           if (!visited.has(newState.strRepresentation)) {
-            // console.log("newState str: " + newState.strRepresentation);
             this.queue.queue(newState);
           }
         }
       }
     }
     return -1;
-    // console.log("PQ: " + this.queue.length + ", Set: " + this.visited.size);
   }
 
-  expand(state, stopEarly) {
+  expand(state) {
     let states = [];
     let moves = this.getValidMoves(state);
-    if(stopEarly) console.log("move size: " + moves.length);
 
     // todo make sure not same move we came from
     for (let i = 0; i < moves.length; i++) {
@@ -67,7 +46,7 @@ class AStar {
       let newState = new State(0, newBoard, state.emptyRow, state.emptyCol, state.depth + 1);
       newState.value = newState.depth + this.heuristic(newState);
       newState.path = state.path;
-      this.move(newState, move, stopEarly);
+      this.move(newState, move);
       states.push(newState);
     }
     return states;
@@ -84,7 +63,7 @@ class AStar {
     return valid;
   }
 
-  move(state, direction, stopEarly) {
+  move(state, direction) {
     let swapPos = null;
     switch (direction) {
       case "U":
@@ -107,15 +86,7 @@ class AStar {
         throw 'Ivalid Direction';
     }
     if (swapPos !== null) {
-      if(stopEarly) {
-        console.log("Old board: " + state.board);
-        console.log("Direction: " + direction);
-      }
       this.swap(state, swapPos);
-      if (stopEarly) {
-        console.log("New board: " + state.board);
-        console.log("****************");
-      }
     }
   }
 

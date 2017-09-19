@@ -27,45 +27,38 @@ class App extends Component {
     this.solvePuzzle = this.solvePuzzle.bind(this);
   }
 
-  solvePuzzle(stopEarly) {
+  solvePuzzle(hint) {
     if (this.state.tiles.length == 0) {
       alert("Please shuffle the board first.")
+      return;
+    } else if (this.state.boardWidth != 3) {
+      alert("The solver can only handle 3x3 boards");
       return;
     }
 
     let whiteTileIndex = this.state.tiles.findIndex(image => {
       return (image.key ==  -1);
     });
-    let row = whiteTileIndex % this.state.boardWidth;
-    let col = Math.floor(whiteTileIndex/this.state.boardWidth);
+    let col = whiteTileIndex % this.state.boardWidth;
+    let row = Math.floor(whiteTileIndex/this.state.boardWidth);
     let model = this.generateModel(row, col);
-
     let init = new State(0, model, row, col, 0);
-    // var init = new Node(0, [[6,4,7],[8,5,0],[3,2,1]], 1, 2, 0);
     let goal = new State(0, [[1,2,3],[4,5,6],[7,8,0]], 2, 2, 0);
     let astar = new AStar(init, goal, 0);
-    // To measure time taken by the algorithm
-    let startTime = new Date();
+
     // Execute AStar
-    let result = astar.solve(stopEarly);
+    let result = astar.solve();
 
     if(result != -1) {
-      alert(result.path);
-
-      this.makeWinningMoves(result.path, astar, 400);
-    }
-    else alert(result);
+      this.makeWinningMoves(result.path, astar, hint);
+    } else alert("AStar Failed :(");
   }
 
-  makeWinningMoves(path, astar, delay) {
-    // console.log("move: " + newIndex);
-    // console.log("tiles:");
-    // console.log(this.state.tiles);
+  makeWinningMoves(path, astar, hint) {
     if (path.length < 1) {
       this.checkGameOver();
       return;
     }
-
     let newTiles = this.state.tiles.slice();
     let currentIndex = newTiles.findIndex(image => {
       return (image.key ==  -1);
@@ -76,13 +69,22 @@ class App extends Component {
     }
     this.swapTiles(newTiles, newIndex, currentIndex);
     let newNumMoves = this.state.moveCount + 1;
-    this.setState({
-      tiles: newTiles,
-      moveCount: newNumMoves,
-    }, () => {
-          setTimeout( () => {
-            this.makeWinningMoves(path.slice(1), astar, delay)}, delay)
+    if (hint) {
+      this.setState({
+        tiles: newTiles,
+        moveCount: newNumMoves,
       });
+      this.checkGameOver();
+    } else {
+      this.setState({
+        tiles: newTiles,
+        moveCount: newNumMoves,
+      }, () => {
+                setTimeout( () => {
+                  this.makeWinningMoves(path.slice(1), astar)}, 300)
+                }
+      );
+    }
   }
 
   generateTiles() {
@@ -154,7 +156,6 @@ class App extends Component {
     let array = this.generateArray(tiles);
     let inversions = this.countInversions(array);
     if (!(inversions % 2 == 0)) {
-      console.log("insolvable");
       let i = 0;
       while (!array[i] || !array[i+1]) i++;
       let tile = array[i];

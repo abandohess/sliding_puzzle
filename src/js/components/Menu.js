@@ -10,7 +10,7 @@ class Menu extends React.Component {
           <span>Solve Puzzle</span></button>
           <button className="btn orange bigZ sideMenuButton" onClick={() => {
                     this.props.solvePuzzle(true); }} >
-          <span>Stop short</span></button>
+          <span>Get Hint</span></button>
           <button className="btn bigZ sideMenuButton noEffect" >
           <span>Move Count: {this.props.moveCount}</span></button>
       </div>
