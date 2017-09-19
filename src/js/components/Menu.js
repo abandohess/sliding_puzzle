@@ -6,11 +6,11 @@ class Menu extends React.Component {
     return (
       <div className="menu-container">
           <button className="btn orange sideMenuButton" onClick={() => {
-                    this.props.solvePuzzle(); }} >
+                    this.props.solvePuzzle(false); }} >
           <span>Solve Puzzle</span></button>
           <button className="btn orange bigZ sideMenuButton" onClick={() => {
-                    this.props.onShuffle(true); }} >
-          <span>Hint Please</span></button>
+                    this.props.solvePuzzle(true); }} >
+          <span>Stop short</span></button>
           <button className="btn bigZ sideMenuButton noEffect" >
           <span>Move Count: {this.props.moveCount}</span></button>
       </div>

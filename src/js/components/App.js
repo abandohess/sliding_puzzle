@@ -3,10 +3,10 @@ import Board from './Board.js';
 import Navbar from './Navbar.js';
 import Footer from './Footer.js';
 import Menu from './Menu.js';
-import BoardModel from '../Models/BoardModel.js';
-import PuzzleSolver from '../Models/PuzzleSolver.js';
+// import BoardModel from '../Models/BoardModel.js';
+// import PuzzleSolver from '../Models/PuzzleSolver.js';
 import AStar from '../Models/AStar.js';
-import Node from '../Models/Node.js';
+import State from '../Models/State.js';
 import '../../css/App.css';
 
 class App extends Component {
@@ -27,124 +27,62 @@ class App extends Component {
     this.solvePuzzle = this.solvePuzzle.bind(this);
   }
 
-  solvePuzzle() {
+  solvePuzzle(stopEarly) {
     if (this.state.tiles.length == 0) {
       alert("Please shuffle the board first.")
       return;
     }
+
     let whiteTileIndex = this.state.tiles.findIndex(image => {
       return (image.key ==  -1);
     });
     let row = whiteTileIndex % this.state.boardWidth;
     let col = Math.floor(whiteTileIndex/this.state.boardWidth);
-    let currBoard = [];
-    for (let i = 0; i < this.state.boardWidth * this.state.boardWidth; i += this.state.boardWidth) {
-      let row = [];
-      for (let j = 0; j < this.state.boardWidth; j++) {
-        let tile = this.state.tiles[i + j];
-        row.push(tile.key + 1);
-      }
-      currBoard.push(row);
-    }
+    let model = this.generateModel(row, col);
 
-    console.log(currBoard);
-    console.log(row);
-    console.log(col);
-
-    let init = new Node(0, currBoard, row, col, 0);
+    let init = new State(0, model, row, col, 0);
     // var init = new Node(0, [[6,4,7],[8,5,0],[3,2,1]], 1, 2, 0);
-    let goal = new Node(0, [[1,2,3],[4,5,6],[7,8,0]], 2, 2, 0);
-
+    let goal = new State(0, [[1,2,3],[4,5,6],[7,8,0]], 2, 2, 0);
     let astar = new AStar(init, goal, 0);
     // To measure time taken by the algorithm
     let startTime = new Date();
     // Execute AStar
-    let result = astar.execute();
+    let result = astar.solve(stopEarly);
 
-    if(result != -1)alert(result.path);
+    if(result != -1) {
+      alert(result.path);
+
+      this.makeWinningMoves(result.path, astar, 400);
+    }
     else alert(result);
-
-    //
-    // let moves = [];
-    // for (let i = 0; i < result.path.length; i++) {
-    //   let moveIndex = this.getMoveIndex(result.path[i]);
-    //   moves.push(moveIndex);
-    // }
-    //
-    // alert(moves);
-    //
-    // // To measure time taken by the algorithm
-    // let endTime = new Date();
-    // alert('Completed in: ' + (endTime - startTime) + ' milliseconds');
-    //
-    // let timeouts =[];
-    // let delay = 2000;
-    // var game = this;
-    // for (let i = 0; i < moves.length; i++) {
-    //   (function(n) {
-    //     timeouts.push(setTimeout(function() {
-    //             game.move(n);
-    //         }, delay));
-    //     } (i));
-    //     delay = delay + 1000;
-    // }
-
-
-
-    // let solver = new PuzzleSolver(this.state.tiles);
-    // solver.testSet();
-    // let moves = solver.AStar();
-
-  //  alert(moves);
   }
 
-  getMoveIndex(command) {
-      let whiteTileIndex = this.state.tiles.findIndex(image => {
-        return (image.key ==  -1);
+  makeWinningMoves(path, astar, delay) {
+    // console.log("move: " + newIndex);
+    // console.log("tiles:");
+    // console.log(this.state.tiles);
+    if (path.length < 1) {
+      this.checkGameOver();
+      return;
+    }
+
+    let newTiles = this.state.tiles.slice();
+    let currentIndex = newTiles.findIndex(image => {
+      return (image.key ==  -1);
+    });
+    let newIndex = astar.getMoveIndex(path[0], this.state.tiles);
+    if (!this.validMove(newTiles[currentIndex], newTiles[newIndex])) {
+      return;
+    }
+    this.swapTiles(newTiles, newIndex, currentIndex);
+    let newNumMoves = this.state.moveCount + 1;
+    this.setState({
+      tiles: newTiles,
+      moveCount: newNumMoves,
+    }, () => {
+          setTimeout( () => {
+            this.makeWinningMoves(path.slice(1), astar, delay)}, delay)
       });
-      let coordinates = this.getCoordinates(whiteTileIndex);
-      let index = -10;
-      console.log("white tile: " + whiteTileIndex);
-      console.log("white tile coordinates: " + coordinates);
-      if (command == 'U'){
-        coordinates=[coordinates[0], coordinates[1] - 1];
-        index = this.getIndex(coordinates);
-        console.log("UP");
-        console.log("new coordinates: " + coordinates);
-        console.log("new index: " + index);
-        // setTimeout(this.move(index), 1000);
-      }
-      else if (command == 'D'){
-        coordinates=[coordinates[0], coordinates[1] + 1];
-        index = this.getIndex(coordinates);
-        console.log("DOWN");
-        console.log("new coordinates: " + coordinates);
-        console.log("new index: " + index);
-        // setTimeout(this.move(index), 1000);
-      }
-      else if (command == 'L'){
-        coordinates=[coordinates[0] - 1, coordinates[1]];
-        index = this.getIndex(coordinates);
-        console.log("LEFT");
-        console.log("new coordinates: " + coordinates);
-        console.log("new index: " + index);
-        // setTimeout(this.move(index), 1000);
-      }
-      if (command == 'R'){
-        coordinates=[coordinates[0] + 1, coordinates[1]];
-        index = this.getIndex(coordinates);
-        console.log("RIGHT");
-        console.log("new coordinates: " + coordinates);
-        console.log("new index: " + index);
-        // setTimeout(this.move(index), 1000);
-
-      }
-
-      return index;
-  }
-
-  getIndex(coordinates) {
-    return ((coordinates[1] * this.state.boardWidth) + coordinates[0]);
   }
 
   generateTiles() {
@@ -167,12 +105,77 @@ class App extends Component {
     }
   }
 
+  generateModel(row, col) {
+    let currBoard = [];
+    for (let i = 0; i < this.state.boardWidth * this.state.boardWidth; i += this.state.boardWidth) {
+      let row = [];
+      for (let j = 0; j < this.state.boardWidth; j++) {
+        let tile = this.state.tiles[i + j];
+        row.push(tile.key + 1);
+      }
+      currBoard.push(row);
+    }
+    return currBoard;
+  }
+
+  generateArray(tiles) {
+    let width = Math.sqrt(tiles.length);
+    let array = [];
+    for (let i = 0; i < tiles.length; i++) {
+      let currTile = tiles[i];
+      let index;
+      if (currTile.startX === width - 1
+        && currTile.startY === width - 1) {
+          index = 0;
+      } else {
+        index = (width * currTile.startY) + currTile.startX + 1;
+      }
+      array.push(index);
+    }
+    return array;
+  }
+
+  countInversions(array) {
+    let invArray = array.map(function(num, i) {
+      let inversions = 0;
+      for (let j = i + 1; j < array.length; j++) {
+          if (array[j] && array[j] < num) {
+              inversions += 1;
+          }
+      }
+      return inversions;
+    });
+    return invArray.reduce(function(a, b) {
+        return a + b;
+    });
+  }
+
+  makeSolvable(tiles) {
+    let array = this.generateArray(tiles);
+    let inversions = this.countInversions(array);
+    if (!(inversions % 2 == 0)) {
+      console.log("insolvable");
+      let i = 0;
+      while (!array[i] || !array[i+1]) i++;
+      let tile = array[i];
+      array[i] = array[i+1];
+      array[i+1] = tile;
+
+      this.swapTiles(tiles, i, i+1);
+
+      let newInversions = this.countInversions(array);
+      if (!(newInversions % 2 == 0)) alert("still insolvable");
+    }
+  }
+
   shuffleTiles(imagePieces, img, imgWidth, imgHeight) {
     var numElements = this.state.boardWidth * this.state.boardWidth - 1;
     for (var i = 0; i < numElements; i++) {
       var shuffleIndex = Math.floor(Math.random() * numElements);
       this.swapTiles(imagePieces, i, shuffleIndex);
     }
+
+    this.makeSolvable(imagePieces);
 
     this.setState({
       image: img,
@@ -199,6 +202,9 @@ class App extends Component {
   }
 
   move(newIndex) {
+    console.log("move: " + newIndex);
+    console.log("tiles:");
+    console.log(this.state.tiles);
     let newTiles = this.state.tiles.slice();
     let currentIndex = newTiles.findIndex(image => {
       return (image.key ==  -1);
@@ -209,7 +215,7 @@ class App extends Component {
     this.swapTiles(newTiles, newIndex, currentIndex);
     this.state.tiles = newTiles;
     let newNumMoves = this.state.moveCount + 1;
-    this.state.moveCount = newNumMoves
+    this.state.moveCount = newNumMoves;
     this.setState(this.state);
 
     // alert("updated state");

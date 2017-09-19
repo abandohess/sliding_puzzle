@@ -1,4 +1,4 @@
-import Node from './Node.js';
+import State from './State.js';
 import PriorityQueue from 'js-priority-queue';
 
 class AStar {
@@ -15,113 +15,135 @@ class AStar {
    this.visited = new Set();
   }
 
-  execute() {
-    
+  solve(stopEarly) {
+    let someIterations = false;
+    if (!stopEarly) {
+      someIterations = true;
+      stopEarly = true;
+    }
+    let iterations = 0;
+    let max = 10;
+    let visited = new Set();
+    if(stopEarly) console.log("INITIAL QUEUE SIZE: " + this.queue.length);
     while (this.queue.length > 0) {
-      var current = this.queue.dequeue();
+      if(someIterations && iterations > max) stopEarly = false;
+      if (stopEarly) console.log("entering loop");
+      if (stopEarly && iterations > max) break;
+      iterations ++;
+      // console.log("queue len: " + this.queue.length + ", set size: " + visited.size);
+      let current = this.queue.dequeue();
       if (current.strRepresentation == this.goal.strRepresentation) {
         alert("terminated");
         return current;
+      } else {
+        visited.add(current.strRepresentation);
+
+        let frontier = this.expand(current, stopEarly);
+        // console.log(frontier);
+        for (let i = 0; i < frontier.length; i++) {
+          let newState = frontier[i];
+          // console.log(visited);
+          // console.log(frontier);
+          if (!visited.has(newState.strRepresentation)) {
+            // console.log("newState str: " + newState.strRepresentation);
+            this.queue.queue(newState);
+          }
+        }
       }
-      this.visited.add(current.strRepresentation);
-      // console.log(current.strRepresentation);
-      this.expandNode(current);
     }
     return -1;
     // console.log("PQ: " + this.queue.length + ", Set: " + this.visited.size);
   }
 
-  expandNode(node) {
-    var temp;
-    var newState;
-    var col = node.emptyCol;
-    var row = node.emptyRow;
-    var newNode;
+  expand(state, stopEarly) {
+    let states = [];
+    let moves = this.getValidMoves(state);
+    if(stopEarly) console.log("move size: " + moves.length);
 
-    // Up
-    if (row > 0) {
-      newState = node.state.clone();
-      temp = newState[row - 1][col];
-      newState[row - 1][col] = this.empty;
-      newState[row][col] = temp;
-      newNode = new Node(0, newState, row - 1, col,  node.depth + 1);
-
-      if (!this.visited.has(newNode.strRepresentation)) {
-        newNode.value = newNode.depth + this.heuristic(newNode);
-        newNode.path = node.path + "U";
-        this.queue.queue(newNode);
-        // console.log("up " + newNode.strRepresentation);
-        //this.visited.add(newNode.strRepresentation);
-      }
+    // todo make sure not same move we came from
+    for (let i = 0; i < moves.length; i++) {
+      let move = moves[i];
+      let newBoard = state.board.clone();
+      let newState = new State(0, newBoard, state.emptyRow, state.emptyCol, state.depth + 1);
+      newState.value = newState.depth + this.heuristic(newState);
+      newState.path = state.path;
+      this.move(newState, move, stopEarly);
+      states.push(newState);
     }
+    return states;
+  }
 
-    // Down
-    if (row < node.size - 1) {
-      newState = node.state.clone();
-      temp = newState[row + 1][col];
-      newState[row + 1][col] = this.empty;
-      newState[row][col] = temp;
-      newNode = new Node(0, newState, row + 1, col, node.depth + 1);
+  getValidMoves(state) {
+    let col = state.emptyCol;
+    let row = state.emptyRow;
+    let valid = [];
+    if (row > 0) valid.push("U");
+    if (row < state.size - 1) valid.push("D");
+    if (col > 0) valid.push("L");
+    if (col < state.size - 1) valid.push("R");
+    return valid;
+  }
 
-      if (!this.visited.has(newNode.strRepresentation)) {
-        newNode.value = newNode.depth + this.heuristic(newNode);
-        newNode.path = node.path + "D";
-        this.queue.queue(newNode);
-        // console.log("down " + newNode.strRepresentation);
-        //this.visited.add(newNode.strRepresentation);
-      }
+  move(state, direction, stopEarly) {
+    let swapPos = null;
+    switch (direction) {
+      case "U":
+        swapPos = [state.emptyRow - 1, state.emptyCol];
+        state.path += "U";
+        break;
+      case "D":
+        swapPos =[state.emptyRow + 1, state.emptyCol];
+        state.path += "D";
+        break;
+      case "L":
+        swapPos =[state.emptyRow, state.emptyCol - 1];
+        state.path += "L";
+        break;
+      case "R":
+        swapPos =[state.emptyRow, state.emptyCol + 1];
+        state.path += "R";
+        break;
+      default:
+        throw 'Ivalid Direction';
     }
-
-    // Left
-    if (col > 0) {
-      newState = node.state.clone();
-      temp = newState[row][col - 1]
-      newState[row][col - 1] = this.empty
-      newState[row][col] = temp
-      newNode = new Node(0, newState, row, col - 1, node.depth + 1)
-
-      if (!this.visited.has(newNode.strRepresentation)) {
-        newNode.value = newNode.depth + this.heuristic(newNode);
-        newNode.path = node.path + "L";
-        this.queue.queue(newNode);
-        // console.log("left " + newNode.strRepresentation);
-        //this.visited.add(newNode.strRepresentation);
+    if (swapPos !== null) {
+      if(stopEarly) {
+        console.log("Old board: " + state.board);
+        console.log("Direction: " + direction);
       }
-    }
-
-    // Right
-    if (col < node.size - 1) {
-      newState = node.state.clone();
-      temp = newState[row][col + 1];
-      newState[row][col + 1] = this.empty;
-      newState[row][col] = temp;
-      newNode = new Node(0, newState, row, col + 1, node.depth + 1);
-
-      if (!this.visited.has(newNode.strRepresentation)) {
-        newNode.value = newNode.depth + this.heuristic(newNode);
-        newNode.path = node.path + "R";
-        this.queue.queue(newNode);
-        // console.log("right " + newNode.strRepresentation);
-      //  this.visited.add(newNode.strRepresentation);
+      this.swap(state, swapPos);
+      if (stopEarly) {
+        console.log("New board: " + state.board);
+        console.log("****************");
       }
     }
   }
 
-  heuristic(node) {
-    return this.manhattanDistance(node);
+  swap(state, swapPos) {
+    let row = state.emptyRow;
+    let col = state.emptyCol;
+    state.board[row][col] = state.board[swapPos[0]][swapPos[1]];
+    state.board[swapPos[0]][swapPos[1]] = this.empty;
+    state.emptyRow = swapPos[0];
+    state.emptyCol = swapPos[1];
+    state.createString(state.board);
+  }
+
+  heuristic(state) {
+    return this.manhattanDistance(state);
     // + this.linearConflicts(node);
   }
 
-  manhattanDistance(node) {
-    var result = 0;
+  manhattanDistance(state) {
+    let result = 0;
 
-    for (var i = 0; i < node.state.length; i++) {
-      for (var j = 0; j < node.state[i].length; j++) {
-        var elem = node.state[i][j];
-        var found = false;
-        for (var h = 0; h < this.goal.state.length; h++) {
-          for (var k = 0; k < this.goal.state[h].length; k++) {
-            if (this.goal.state[h][k] == elem) {
+    for (let i = 0; i < state.board.length; i++) {
+      for (let j = 0; j < state.board[i].length; j++) {
+        let elem = state.board[i][j];
+        let found = false;
+        for (let h = 0; h < this.goal.board.length; h++) {
+          for (let k = 0; k < this.goal.board[h].length; k++) {
+            if (this.goal.board[h][k] == elem) {
               result += Math.abs(h - i) + Math.abs(j - k);
               found = true;
               break;
@@ -132,6 +154,41 @@ class AStar {
       }
     }
     return result;
+  }
+
+  getMoveIndex(direction, board) {
+    let whiteTile = board.findIndex(image => {
+      return (image.key ==  -1);
+    });
+    let width = Math.sqrt(board.length);
+    let row = Math.floor(whiteTile/width);
+    let col = whiteTile % width;
+
+    let move = null;
+    switch (direction) {
+      case "U":
+        move = [row - 1, col];
+        break;
+      case "D":
+        move =[row + 1, col];
+        break;
+      case "L":
+        move =[row, col - 1];
+        break;
+      case "R":
+        move =[row, col + 1];
+        break;
+      default:
+        throw 'Ivalid Direction';
+    }
+    if (move !== null) {
+      let index = this.getIndex(move, width);
+      return index;
+    }
+  }
+
+  getIndex(coordinates, width) {
+    return ((coordinates[0] * width) + coordinates[1]);
   }
 
 //   linearConflicts(node) {
